@@ -1,20 +1,18 @@
 #Load Libraries
 install.packages("e1071")
-library(e1071)
-
 install.packages("caret")
 install.packages("dplyr")
 install.packages("rpart")
 install.packages("rpart.plot")
+install.packages("xgboost")
+install.packages("randomForest")
+
+library(e1071)
 library(caret)
 library(dplyr)
 library(rpart)
 library(rpart.plot)
-
-install.packages("xgboost")
 library(xgboost)
-
-install.packages("randomForest")
 library(randomForest)
 
 #Load data
@@ -207,8 +205,3 @@ print("XGBoost Confusion Matrix:")
 print(xgb_conf_matrix)
 
 print(paste("XGBoost Accuracy =", round(xgb_accuracy * 100, 2), "%"))
-
-
-
-
-
