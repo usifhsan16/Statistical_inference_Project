@@ -53,9 +53,18 @@ data$price_class <- as.factor(data$price_class)
 #Removing unhelpful column from the dataset for better normalization
 data$AdditionInfo<-NULL
 
-#Normalizing the value of the character columns so it helps in the training and testing
+# Reduce high-cardinality categorical variables
+# Keep top 15 brands, rest as Other
+top_brands <- names(sort(table(data$Brand), decreasing = TRUE))[1:15]
+data$Brand <- ifelse(data$Brand %in% top_brands, as.character(data$Brand), "Other")
 data$Brand <- as.factor(data$Brand)
+
+# Keep top 25 models, rest as Other
+top_models <- names(sort(table(data$model), decreasing = TRUE))[1:25]
+data$model <- ifelse(data$model %in% top_models, as.character(data$model), "Other")
 data$model <- as.factor(data$model)
+
+#Normalizing the value of the character columns so it helps in the training and testing
 data$Transmission <- as.factor(data$Transmission)
 data$Owner <- as.factor(data$Owner)
 data$FuelType <- as.factor(data$FuelType)
@@ -63,7 +72,7 @@ data$FuelType <- as.factor(data$FuelType)
 #Turning the date from a character column into a date type column
 data$PostedDate <- as.Date(paste0("01-", data$PostedDate),format = "%d-%b-%y")
 
-# Remove Nulls
+#Remove Nulls
 data <- na.omit(data)
 
 #Training Data
@@ -75,23 +84,23 @@ train_data  <- rbind(train_data , data[8501:9535,])
 test_data  <- rbind(data[1501:3000,], data[4501:6000,])
 test_data  <- rbind(test_data , data[7501:8500,])
 
-
 str(data)
 head(data)
+
 
 
 # Naive Bayes
 
 #1: Naive Bayes Model (FIXED FORMULA)
-classyPrice <- naiveBayes(price_class ~ Age + kmDriven + FuelType + Transmission + Owner, data = train_data)
+classyPrice <- naiveBayes(price_class ~ Age + kmDriven + Brand + model + FuelType + Transmission + Owner, data = train_data)
 
 #2: Prediction
 PricePrediction <- predict(classyPrice, newdata = test_data)
 
 #3: Naive Bayes Evaluation
 table(PricePrediction)
-table(PricePrediction, testdt$price_class)
-conf_matrix <- table(PricePrediction, testdt$price_class)
+table(PricePrediction, test_data$price_class)
+conf_matrix <- table(PricePrediction, test_data$price_class)
 accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
 print(paste("Model Accuracy =", round(accuracy * 100, 2), "%"))
 
@@ -99,7 +108,10 @@ print(paste("Model Accuracy =", round(accuracy * 100, 2), "%"))
 
 # Decision Tree
 
-tree_model <- rpart(price_class ~ Age + kmDriven + FuelType + Transmission + Owner, data = train_data, method = "class", control = rpart.control(cp = 0.005, maxdepth = 15))
+tree_model <- rpart(price_class ~ Age + kmDriven + Brand + model + FuelType + Transmission + Owner,
+                    data = train_data,
+                    method = "class",
+                    control = rpart.control(cp = 0.005, maxdepth = 15))
 
 #1: Plot Tree
 rpart.plot(tree_model, main = "Used Cars Price Decision Tree")
@@ -114,12 +126,13 @@ print(tree_conf)
 
 
 
+
 # Random Forest Model
 
 set.seed(123)
 
 rf_model <- randomForest(
-  price_class ~ Age + kmDriven + FuelType + Transmission + Owner,
+  price_class ~ Age + kmDriven + Brand + model + FuelType + Transmission + Owner,
   data = train_data,
   ntree = 200,
   importance = TRUE
@@ -139,27 +152,27 @@ varImpPlot(rf_model)
 
 # XGBoost Model
 
-# 1. Prepare feature matrices
-x_train <- train_data[, c("Age", "kmDriven", "FuelType", "Transmission", "Owner")]
-x_test  <- test_data[,  c("Age", "kmDriven", "FuelType", "Transmission", "Owner")]
+#1: Prepare feature matrices
+x_train <- train_data[, c("Age", "kmDriven", "Brand", "model", "FuelType", "Transmission", "Owner")]
+x_test  <- test_data[,  c("Age", "kmDriven", "Brand", "model", "FuelType", "Transmission", "Owner")]
 
-# One-hot encoding for categorical variables
+#2: One-hot encoding for categorical variables
 dummies <- dummyVars(~ ., data = x_train)
 
 train_matrix <- predict(dummies, newdata = x_train)
 test_matrix  <- predict(dummies, newdata = x_test)
 
-# Convert labels to 0,1,2 (required by XGBoost)
+#3: Convert labels to 0,1,2 (required by XGBoost)
 y_train <- as.numeric(train_data$price_class) - 1
 y_test  <- as.numeric(test_data$price_class) - 1
 
 
-# 2. Convert to DMatrix
+#4: Convert to DMatrix
 dtrain <- xgb.DMatrix(data = train_matrix, label = y_train)
 dtest  <- xgb.DMatrix(data = test_matrix, label = y_test)
 
 
-# 3. XGBoost parameters
+#5: XGBoost parameters
 params <- list(
   objective = "multi:softmax",
   num_class = 3,
@@ -169,7 +182,7 @@ params <- list(
 )
 
 
-# 4. Train model
+#6: Train model
 set.seed(123)
 
 xgb_model <- xgb.train(
@@ -179,7 +192,7 @@ xgb_model <- xgb.train(
 )
 
 
-# 5. Prediction & Evaluation
+#7: Prediction & Evaluation
 xgb_pred <- predict(xgb_model, dtest)
 
 xgb_conf_matrix <- table(
