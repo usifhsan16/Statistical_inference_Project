@@ -164,11 +164,9 @@ test_matrix  <- predict(dummies, newdata = x_test)
 y_train <- as.numeric(train_data$price_class) - 1
 y_test  <- as.numeric(test_data$price_class) - 1
 
-
 #4: Convert to DMatrix
 dtrain <- xgb.DMatrix(data = train_matrix, label = y_train)
 dtest  <- xgb.DMatrix(data = test_matrix, label = y_test)
-
 
 #5: XGBoost parameters
 params <- list(
@@ -179,7 +177,6 @@ params <- list(
   learning_rate = 0.3
 )
 
-
 #6: Train model
 set.seed(123)
 
@@ -188,7 +185,6 @@ xgb_model <- xgb.train(
   data = dtrain,
   nrounds = 100
 )
-
 
 #7: Prediction & Evaluation
 xgb_pred <- predict(xgb_model, dtest)
@@ -205,3 +201,6 @@ print("XGBoost Confusion Matrix:")
 print(xgb_conf_matrix)
 
 print(paste("XGBoost Accuracy =", round(xgb_accuracy * 100, 2), "%"))
+
+importance_matrix <- xgb.importance( feature_names = colnames(train_matrix), model = xgb_model)
+xgb.plot.importance(importance_matrix, top_n = 20, main = "Top 20 Important Features - XGBoost")
