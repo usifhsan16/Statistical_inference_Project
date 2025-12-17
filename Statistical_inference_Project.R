@@ -87,6 +87,99 @@ head(data)
 
 
 
+par(mfcol = c(4, 2), mar = c(4, 4, 3, 1))
+
+
+# --------------------------------
+# 1) Age vs Price Class (Scatter)
+plot(
+  jitter(as.numeric(data$price_class)),
+  data$Age,
+  pch = 16,
+  col = "blue",
+  xaxt = "n",
+  main = "Age vs Price Class (Scatter)",
+  xlab = "Price Class",
+  ylab = "Age"
+)
+axis(1, at = 1:3, labels = levels(data$price_class))
+
+# --------------------------------
+# 2) Km Driven vs Price Class (Scatter)
+plot(
+  jitter(as.numeric(data$price_class)),
+  data$kmDriven,
+  pch = 16,
+  col = "darkgreen",
+  xaxt = "n",
+  main = "Km Driven vs Price Class (Scatter)",
+  xlab = "Price Class",
+  ylab = "Km Driven"
+)
+axis(1, at = 1:3, labels = levels(data$price_class))
+
+# --------------------------------
+# Encode categorical variables (visualization only)
+brand_num <- as.numeric(data$Brand)
+model_num <- as.numeric(data$model)
+owner_num <- as.numeric(data$Owner)
+fuel_num  <- as.numeric(data$FuelType)
+trans_num <- as.numeric(data$Transmission)
+
+# 3) Transmission vs Price Class (Scatter)
+boxplot(
+  jitter(as.numeric(data$price_class)),
+  trans_num,
+  pch = 16,
+  col = "purple",
+  xaxt = "n",
+  main = "Transmission vs Price Class",
+  xlab = "Price Class",
+  ylab = "Transmission (Encoded)"
+)
+axis(1, at = 1:3, labels = levels(data$price_class))
+# --------------------------------
+# 4) Brand vs Price Class (Box Plot)
+boxplot(
+  brand_num ~ data$price_class,
+  col = rainbow(3),
+  main = "Brand vs Price Class",
+  xlab = "Price Class",
+  ylab = "Brand (Encoded)"
+)
+
+# --------------------------------
+# 5) Model vs Price Class (Box Plot)
+boxplot(
+  model_num ~ data$price_class,
+  col = rainbow(3),
+  main = "Model vs Price Class",
+  xlab = "Price Class",
+  ylab = "Model (Encoded)"
+)
+
+# --------------------------------
+# 6) Owner vs Price Class (Box Plot)
+boxplot(
+  owner_num ~ data$price_class,
+  col = rainbow(3),
+  main = "Owner vs Price Class",
+  xlab = "Price Class",
+  ylab = "Owner (Encoded)"
+)
+
+# --------------------------------
+# 7) Fuel Type vs Price Class (Box Plot)
+boxplot(
+  fuel_num ~ data$price_class,
+  col = rainbow(3),
+  main = "Fuel Type vs Price Class",
+  xlab = "Price Class",
+  ylab = "Fuel Type (Encoded)"
+)
+
+
+
 # Naive Bayes
 
 #1: Naive Bayes Model (FIXED FORMULA)
@@ -101,6 +194,85 @@ table(PricePrediction, test_data$price_class)
 conf_matrix <- table(PricePrediction, test_data$price_class)
 accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
 print(paste("Model Accuracy =", round(accuracy * 100, 2), "%"))
+
+
+
+par(mfcol = c(4, 2), mar = c(4, 4, 3, 1))
+
+# 1) Brand vs Price Class
+barplot(
+  table(data$Brand, data$price_class),
+  beside = TRUE,
+  col = rainbow(5),
+  main = "Brand vs Price Class",
+  xlab = "Price Class",
+  ylab = "Count",
+  legend = TRUE
+)
+
+# 2) Model vs Price Class
+barplot(
+  table(data$model, data$price_class),
+  beside = TRUE,
+  col = rainbow(5),
+  main = "Model vs Price Class",
+  xlab = "Price Class",
+  ylab = "Count",
+  legend = TRUE
+)
+
+# 3) Age vs Price Class
+boxplot(
+  Age ~ price_class,
+  data = data,
+  col = rainbow(3),
+  main = "Age vs Price Class",
+  xlab = "Price Class",
+  ylab = "Age"
+)
+
+# 4) Km Driven vs Price Class
+boxplot(
+  kmDriven ~ price_class,
+  data = data,
+  col = rainbow(3),
+  main = "Km Driven vs Price Class",
+  xlab = "Price Class",
+  ylab = "Km Driven"
+)
+
+# 5) Transmission vs Price Class
+barplot(
+  table(data$Transmission, data$price_class),
+  beside = TRUE,
+  col = rainbow(3),
+  main = "Transmission vs Price Class",
+  xlab = "Price Class",
+  ylab = "Count",
+  legend = TRUE
+)
+
+# 6) Owner vs Price Class
+barplot(
+  table(data$Owner, data$price_class),
+  beside = TRUE,
+  col = rainbow(4),
+  main = "Owner vs Price Class",
+  xlab = "Price Class",
+  ylab = "Count",
+  legend = TRUE
+)
+
+# 7) Fuel Type vs Price Class
+barplot(
+  table(data$FuelType, data$price_class),
+  beside = TRUE,
+  col = rainbow(4),
+  main = "Fuel Type vs Price Class",
+  xlab = "Price Class",
+  ylab = "Count",
+  legend = TRUE
+)
 
 
 
