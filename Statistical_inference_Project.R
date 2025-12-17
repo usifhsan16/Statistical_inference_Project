@@ -1,7 +1,26 @@
+#Load Libraries
+install.packages("e1071")
+library(e1071)
+
+install.packages("caret")
+install.packages("dplyr")
+install.packages("rpart")
+install.packages("rpart.plot")
+library(caret)
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+install.packages("xgboost")
+library(xgboost)
+
+install.packages("randomForest")
+library(randomForest)
+
 #Load data
 data<-read.csv("used_car_dataset.csv",na.strings = "")
 #Remove NAs
-data$kmDriven[is.na(data$kmDriven)]<-mode(data$kmDriven)
+data$kmDriven[is.na(data$kmDriven)]<-mean(data$kmDriven)
 
 #kmDriven column is chr and has values that needs to be trimmed and turn it into integer
 data$kmDriven <- gsub(" km", "", data$kmDriven)
@@ -23,6 +42,7 @@ data$price_class <- cut(
   labels = c("Low", "Medium", "High"),
   include.lowest = TRUE
 )
+data$price_class <- as.factor(data$price_class)
 
 # Remove numeric price column (Naive Bayes = classification)
 data$AskPrice <- NULL
@@ -43,39 +63,138 @@ data$FuelType <- as.factor(data$FuelType)
 #Turning the date from a character column into a date type column
 data$PostedDate <- as.Date(paste0("01-", data$PostedDate),format = "%d-%b-%y")
 
+# Remove Nulls
+data <- na.omit(data)
+
+#Training Data
+train_data  <- rbind(data[1:1500,], data[3001:4500,])
+train_data  <- rbind(train_data , data[6001:7500,])
+train_data  <- rbind(train_data , data[8501:9535,])
+
+#Testing Data
+test_data  <- rbind(data[1501:3000,], data[4501:6000,])
+test_data  <- rbind(test_data , data[7501:8500,])
+
+
 str(data)
 head(data)
 
 
-
 # Naive Bayes
-install.packages("e1071")
-library(e1071)
 
-#1: Training Data (rbind – lab style)
-newdt <- rbind(data[1:1500,], data[3001:4500,])
-newdt <- rbind(newdt, data[6001:7500,])
-newdt <- rbind(newdt, data[8501:9582,])
+#1: Naive Bayes Model (FIXED FORMULA)
+classyPrice <- naiveBayes(price_class ~ Age + kmDriven + FuelType + Transmission + Owner, data = train_data)
 
-#2: Testing Data (rbind – lab style)
-testdt <- rbind(data[1501:3000,], data[4501:6000,])
-testdt <- rbind(testdt, data[7501:8500,])
+#2: Prediction
+PricePrediction <- predict(classyPrice, newdata = test_data)
 
-#3: Naive Bayes Model (FIXED FORMULA)
-classyPrice <- naiveBayes(price_class ~ Age + kmDriven + FuelType + Transmission + Owner, data = newdt)
-
-#4: Prediction
-PricePrediction <- predict(classyPrice, newdata = testdt)
-
-#5: Result Tables
+#3: Naive Bayes Evaluation
 table(PricePrediction)
 table(PricePrediction, testdt$price_class)
-
-#6: Accuracy
 conf_matrix <- table(PricePrediction, testdt$price_class)
 accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
-
 print(paste("Model Accuracy =", round(accuracy * 100, 2), "%"))
+
+
+
+# Decision Tree
+
+tree_model <- rpart(price_class ~ Age + kmDriven + FuelType + Transmission + Owner, data = train_data, method = "class", control = rpart.control(cp = 0.005, maxdepth = 15))
+
+#1: Plot Tree
+rpart.plot(tree_model, main = "Used Cars Price Decision Tree")
+
+#2: Decision Tree Prediction
+tree_pred <- predict(tree_model, test_data, type = "class")
+
+#3: Decision Tree Evaluation
+tree_conf <- confusionMatrix(tree_pred, test_data$price_class)
+print("Decision Tree Confusion Matrix:")
+print(tree_conf)
+
+
+
+# Random Forest Model
+
+set.seed(123)
+
+rf_model <- randomForest(
+  price_class ~ Age + kmDriven + FuelType + Transmission + Owner,
+  data = train_data,
+  ntree = 200,
+  importance = TRUE
+)
+
+rf_pred <- predict(rf_model, newdata = test_data)
+
+rf_conf_matrix <- table(rf_pred, test_data$price_class)
+rf_accuracy <- sum(diag(rf_conf_matrix)) / sum(rf_conf_matrix)
+
+print(rf_conf_matrix)                 
+print(paste("Random Forest Accuracy =", round(rf_accuracy * 100, 2), "%"))  
+
+varImpPlot(rf_model)            
+
+
+
+# XGBoost Model
+
+# 1. Prepare feature matrices
+x_train <- train_data[, c("Age", "kmDriven", "FuelType", "Transmission", "Owner")]
+x_test  <- test_data[,  c("Age", "kmDriven", "FuelType", "Transmission", "Owner")]
+
+# One-hot encoding for categorical variables
+dummies <- dummyVars(~ ., data = x_train)
+
+train_matrix <- predict(dummies, newdata = x_train)
+test_matrix  <- predict(dummies, newdata = x_test)
+
+# Convert labels to 0,1,2 (required by XGBoost)
+y_train <- as.numeric(train_data$price_class) - 1
+y_test  <- as.numeric(test_data$price_class) - 1
+
+
+# 2. Convert to DMatrix
+dtrain <- xgb.DMatrix(data = train_matrix, label = y_train)
+dtest  <- xgb.DMatrix(data = test_matrix, label = y_test)
+
+
+# 3. XGBoost parameters
+params <- list(
+  objective = "multi:softmax",
+  num_class = 3,
+  eval_metric = "merror",
+  max_depth = 6,
+  learning_rate = 0.3
+)
+
+
+# 4. Train model
+set.seed(123)
+
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 100
+)
+
+
+# 5. Prediction & Evaluation
+xgb_pred <- predict(xgb_model, dtest)
+
+xgb_conf_matrix <- table(
+  factor(xgb_pred, levels = c(0, 1, 2),
+         labels = levels(test_data$price_class)),
+  test_data$price_class
+)
+
+xgb_accuracy <- sum(diag(xgb_conf_matrix)) / sum(xgb_conf_matrix)
+
+print("XGBoost Confusion Matrix:")
+print(xgb_conf_matrix)
+
+print(paste("XGBoost Accuracy =", round(xgb_accuracy * 100, 2), "%"))
+
 
 
 
