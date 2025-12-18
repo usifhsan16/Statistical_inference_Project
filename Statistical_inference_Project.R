@@ -15,6 +15,7 @@ library(rpart.plot)
 library(xgboost)
 library(randomForest)
 
+
 #Load data
 data<-read.csv("used_car_dataset.csv",na.strings = "")
 #Remove NAs
@@ -73,6 +74,7 @@ data$PostedDate <- as.Date(paste0("01-", data$PostedDate),format = "%d-%b-%y")
 #Remove Nulls
 data <- na.omit(data)
 
+
 #Training Data
 train_data  <- rbind(data[1:1500,], data[3001:4500,])
 train_data  <- rbind(train_data , data[6001:7500,])
@@ -88,7 +90,6 @@ head(data)
 
 
 par(mfcol = c(4, 2), mar = c(4, 4, 3, 1))
-
 
 # --------------------------------
 # 1) Age vs Price Class (Scatter)
@@ -177,6 +178,11 @@ boxplot(
   xlab = "Price Class",
   ylab = "Fuel Type (Encoded)"
 )
+
+
+
+
+
 
 
 
@@ -276,6 +282,10 @@ barplot(
 
 
 
+
+
+
+
 # Decision Tree
 
 tree_model <- rpart(price_class ~ Age + kmDriven + Brand + model + FuelType + Transmission + Owner,
@@ -293,6 +303,9 @@ tree_pred <- predict(tree_model, test_data, type = "class")
 tree_conf <- confusionMatrix(tree_pred, test_data$price_class)
 print("Decision Tree Confusion Matrix:")
 print(tree_conf)
+
+
+
 
 
 
@@ -317,6 +330,9 @@ print(rf_conf_matrix)
 print(paste("Random Forest Accuracy =", round(rf_accuracy * 100, 2), "%"))  
 
 varImpPlot(rf_model)            
+
+
+
 
 
 
